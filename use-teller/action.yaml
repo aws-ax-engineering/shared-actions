@@ -1,0 +1,78 @@
+# yamllint disable rule:line-length
+---
+name: use teller
+
+description: |
+  Instantiate teller-file values into the environment. For poc platform team. Assumes service
+  account identity is already added to each pipeline github-actions secrets.
+
+inputs:
+
+  working-directory:
+    description: Set working directory. Default is ./.
+    required: false
+    default: .
+
+  teller-version:
+    description: Specify teller version to override default.
+    required: false
+    default: "1.5.6"
+
+  teller-file:
+    description: Specify teller file to override default of .teller.yml
+    required: false
+    default: ".teller.yml"
+
+  instance-name:
+    description: optional INSTANCE_NAME env value
+    required: false
+    
+  aws-access-key-id: 
+    description: access key
+    required: false
+
+  aws-secret-access-key: 
+    description: secret key
+    required: false
+
+  aws-region: 
+    description: default region
+    required: false
+
+runs:
+  using: "composite"
+
+  steps:
+
+    - name: install teller
+      shell: bash
+      run: |
+        #!/usr/bin/env bash
+        # load tfsec and verification packages
+        curl -SLO "https://github.com/tellerops/teller/releases/download/v${{ inputs.teller-version }}/teller_${{ inputs.teller-version }}_Linux_x86_64.tar.gz"
+        curl -SLO "https://github.com/tellerops/teller/releases/download/v${{ inputs.teller-version }}/checksums.txt"
+        grep teller_${{ inputs.teller-version }}_Linux_x86_64.tar.gz < checksums.txt > teller_checksums.txt
+
+        # verify teller package sha
+        if result=$(shasum --ignore-missing --algorithm 256 --check  checksums.txt 2>&1); then
+            echo "Verified teller package sha"
+        else
+            echo "Unable to verify teller source"
+            echo "shasum Output:"
+            echo "$result"
+            exit 1
+        fi
+
+        # install and smoke test teller
+        sudo tar -xvf teller_${{ inputs.teller-version }}_Linux_x86_64.tar.gz
+        sudo mv teller /usr/local/bin/teller
+        teller version
+
+    - name: add secrets to env
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+        AWS_REGION: ${{ inputs.aws-region }}
+        INSTANCE_NAME: ${{ inputs.instance-name }}
+      shell: bash
+      run: eval "$(teller sh --config=${{ inputs.teller-file }})"

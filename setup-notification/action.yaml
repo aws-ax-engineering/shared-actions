@@ -1,0 +1,68 @@
+# yamllint disable rule:line-length
+---
+name: publish message to sns topic
+
+description: |
+  Instantiate teller-file values into the environment. For poc platform team. Assumes service
+  account identity is already added to each pipeline github-actions secrets.
+
+inputs:
+
+  sns_topic_name:
+    description: SNS Topic Name
+    required: true
+    default: ""
+
+  sns_topic_account_id:
+    description: SNS Topic Account ID
+    required: true
+    default: ""
+    
+  environment:
+    description: account environment
+    required: true
+    default: ""
+
+  status:
+    description: status of the job 
+    required: true
+    default: ""
+
+  alarm:
+    description: Alarmeifjcbdjkrtvlgvcfgunuuttlibjfcdcgkileefcvhud
+    
+    required: true
+    default: ""   
+
+  reason:
+    description: reason
+    required: true
+    default: ""     
+
+  aws-access-key-id: 
+    description: access key
+    required: false
+
+  aws-secret-access-key: 
+    description: secret key
+    required: false
+
+  aws-region: 
+    description: default region
+    required: false     
+    
+runs:
+  using: "composite"
+
+  steps:
+      - name: publish sns message
+        env:
+          AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+          AWS_REGION: ${{ inputs.aws-region }}
+        shell: bash
+        run: |
+            aws sns publish \
+              --topic-arn "arn:aws:sns:${{ inputs.aws-region }}:${{ inputs.sns_topic_account_id }}:${{ inputs.sns_topic_name }}" \
+              --message '{"alarm_name": "${{ inputs.alarm }}", "state": "${{ inputs.status }}", "reason": "${{ inputs.reason }}" }' \
+              --subject "Actions Notification" 
